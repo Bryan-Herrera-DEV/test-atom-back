@@ -1,8 +1,8 @@
-import { firestore } from '../../../core/providers/firebaseProvider';
-import { ITaskRepository } from '../domain/ITaskRepository';
-import { Task } from '../domain/Task';
+import { firestore } from "../../../core/providers/firebaseProvider";
+import { ITaskRepository } from "../domain/ITaskRepository";
+import { Task } from "../domain/Task";
 
-const COLLECTION_NAME = 'tasks';
+const COLLECTION_NAME = "tasks";
 
 export class TaskRepositoryFirebase implements ITaskRepository {
   private readonly collection = firestore.collection(COLLECTION_NAME);
@@ -22,7 +22,7 @@ export class TaskRepositoryFirebase implements ITaskRepository {
     });
   }
 
-  public async createTask(task: Omit<Task, 'id'>): Promise<Task> {
+  public async createTask(task: Omit<Task, "id">): Promise<Task> {
     const now = new Date();
     const docRef = await this.collection.add({
       ...task,
@@ -34,7 +34,7 @@ export class TaskRepositoryFirebase implements ITaskRepository {
       id: docRef.id,
       ...task,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
   }
 
@@ -47,7 +47,7 @@ export class TaskRepositoryFirebase implements ITaskRepository {
 
     const updatedDoc = await this.collection.doc(id).get();
     if (!updatedDoc.exists) {
-      throw new Error('Task not found');
+      throw new Error("Task not found");
     }
     const data = updatedDoc.data()!;
     return {
