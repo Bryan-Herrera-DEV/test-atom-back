@@ -11,10 +11,12 @@ export class UserRepositoryFirebase implements IUserRepository {
     const docRef = this.collection.doc(email);
     const snapshot = await docRef.get();
     if (!snapshot.exists) {
+      console.log("No such document!");
       return null;
     }
     const data = snapshot.data();
     if (!data) {
+      console.log("No such document! b");
       return null;
     }
 
@@ -28,14 +30,13 @@ export class UserRepositoryFirebase implements IUserRepository {
   }
 
   public async create(user: User): Promise<User> {
-    const docRef = await this.collection.add({
+    await this.collection.doc(user.getEmail()).set({
       email: user.getEmail(),
       name: user.getName,
       lastName: user.getLastName,
       createdAt: user.getCreatedAt(),
     });
     return new User({
-      id: docRef.id,
       email: user.getEmail(),
       name: user.getName,
       lastName: user.getLastName,

@@ -1,67 +1,32 @@
-import { firestore } from "../../../core/providers/firebaseProvider";
 import { ITaskRepository } from "../domain/ITaskRepository";
 import { Task } from "../domain/Task";
+import { firestore } from "../../../core/providers/firebaseProvider";
 
 const COLLECTION_NAME = "tasks";
 
 export class TaskRepositoryFirebase implements ITaskRepository {
   private readonly collection = firestore.collection(COLLECTION_NAME);
 
-  public async getAllTasks(): Promise<Task[]> {
-    const snapshot = await this.collection.get();
-    return snapshot.docs.map((doc) => {
+  public async getAllTasksByUser(userEmail: string): Promise<Task[]> {
+    const snapshot = await this.collection
+      .where("userEmail", "==", userEmail)
+      .get();
+    const tasks: Task[] = [];
+    snapshot.forEach((doc) => {
       const data = doc.data();
-      return {
-        id: doc.id,
-        title: data.title,
-        description: data.description,
-        type: data.type,
-        createdAt: data.createdAt.toDate(),
-        updatedAt: data.updatedAt.toDate(),
-      } as Task;
+      tasks.push(
+        new Task({
+          id: doc.id,
+          title: data.title,
+          description: data.description,
+          type: data.type,
+          createdAt: data.createdAt.toDate(),
+          updatedAt: data.updatedAt.toDate(),
+          userEmail: data.userEmail,
+        })
+      );
     });
-  }
-
-  public async createTask(task: Omit<Task, "id">): Promise<Task> {
-    const now = new Date();
-    const docRef = await this.collection.add({
-      ...task,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    return {
-      id: docRef.id,
-      ...task,
-      createdAt: now,
-      updatedAt: now,
-    };
-  }
-
-  public async updateTask(id: string, taskData: Partial<Task>): Promise<Task> {
-    const now = new Date();
-    await this.collection.doc(id).update({
-      ...taskData,
-      updatedAt: now,
-    });
-
-    const updatedDoc = await this.collection.doc(id).get();
-    if (!updatedDoc.exists) {
-      throw new Error("Task not found");
-    }
-    const data = updatedDoc.data()!;
-    return {
-      id: updatedDoc.id,
-      title: data.title,
-      description: data.description,
-      type: data.type,
-      createdAt: data.createdAt.toDate(),
-      updatedAt: data.updatedAt.toDate(),
-    };
-  }
-
-  public async deleteTask(id: string): Promise<void> {
-    await this.collection.doc(id).delete();
+    return tasks;
   }
 
   public async getTaskById(id: string): Promise<Task | null> {
@@ -69,14 +34,68 @@ export class TaskRepositoryFirebase implements ITaskRepository {
     if (!docRef.exists) {
       return null;
     }
+
     const data = docRef.data()!;
-    return {
+    return new Task({
       id: docRef.id,
       title: data.title,
       description: data.description,
       type: data.type,
       createdAt: data.createdAt.toDate(),
       updatedAt: data.updatedAt.toDate(),
+      userEmail: data.userEmail,
+    });
+  }
+
+  public async createTask(task: Task): Promise<Task> {
+    // Firestore usará un ID autogenerado
+    const toSave = {
+      title: task.getTitle(),
+      description: task.getDescription(),
+      type: task.getType(),
+      createdAt: task.getCreatedAt(),
+      updatedAt: task.getUpdatedAt(),
+      userEmail: task.getUserEmail(),
     };
+    const docRef = await this.collection.add(toSave);
+
+    // Retornamos el Task con el ID que generó Firestore
+    return new Task({
+      ...toSave,
+      id: docRef.id,
+    });
+  }
+
+  public async updateTask(task: Task): Promise<Task> {
+    const id = task.getId();
+    if (!id) {
+      throw new Error("Task sin ID. No se puede actualizar.");
+    }
+
+    const toUpdate = {
+      title: task.getTitle(),
+      description: task.getDescription(),
+      type: task.getType(),
+      updatedAt: task.getUpdatedAt(),
+    };
+
+    await this.collection.doc(id).update(toUpdate);
+
+    // Leemos el doc actualizado
+    const updatedDoc = await this.collection.doc(id).get();
+    const data = updatedDoc.data()!;
+    return new Task({
+      id: updatedDoc.id,
+      title: data.title,
+      description: data.description,
+      type: data.type,
+      createdAt: data.createdAt.toDate(),
+      updatedAt: data.updatedAt.toDate(),
+      userEmail: data.userEmail,
+    });
+  }
+
+  public async deleteTask(id: string): Promise<void> {
+    await this.collection.doc(id).delete();
   }
 }

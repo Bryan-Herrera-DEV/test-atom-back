@@ -20,7 +20,7 @@ export class CreateUserUseCase {
 
     const user = UserFactory.create({
       email: dto.email,
-      name: dto.email,
+      name: dto.name,
       lastName: dto.lastName,
     });
 

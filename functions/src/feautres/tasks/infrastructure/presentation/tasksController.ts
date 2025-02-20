@@ -1,53 +1,98 @@
-import { Request, Response, NextFunction } from 'express';
-import { TaskRepositoryFirebase } from '../../infrastructure/TaskRepositoryFirebase';
-import { GetTasksUseCase } from '../../application/getTasksUseCase';
-import { CreateTaskUseCase } from '../../application/createTaskUseCase';
-import { UpdateTaskUseCase } from '../../application/updateTaskUseCase';
-import { DeleteTaskUseCase } from '../../application/deleteTaskUseCase';
+import { Request, Response, NextFunction } from "express";
+import { TaskRepositoryFirebase } from "../TaskRepositoryFirebase";
+import { UserRepositoryFirebase } from "../../../user/infrastructure/UserRepositoryFirebase";
+import { DeleteTaskUseCase } from "../../application/deleteTaskUseCase";
+import { UpdateTaskUseCase } from "../../application/updateTaskUseCase";
+import { CreateTaskUseCase } from "../../application/createTaskUseCase";
+import { GetTasksUseCase } from "../../application/getTasksUseCase";
 
 const taskRepository = new TaskRepositoryFirebase();
+const userRepository = new UserRepositoryFirebase();
 
-export const getTasksHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const getTasksHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const getTasksUseCase = new GetTasksUseCase(taskRepository);
-    const tasks = await getTasksUseCase.execute();
-    res.json(tasks);
+    const userEmail = req.query.userEmail as string;
+    if (!userEmail) {
+      return res.status(400).json({ message: "userEmail es requerido" });
+    }
+
+    const useCase = new GetTasksUseCase(taskRepository);
+    const tasks = await useCase.execute(userEmail);
+    return res.json(tasks);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
 // POST /tasks
-export const createTaskHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const createTaskHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const createTaskUseCase = new CreateTaskUseCase(taskRepository);
-    const newTask = await createTaskUseCase.execute(req.body);
-    res.status(201).json(newTask);
+    const { title, description, userEmail, type } = req.body;
+    const useCase = new CreateTaskUseCase(taskRepository, userRepository);
+    const newTask = await useCase.execute({
+      title,
+      description,
+      userEmail,
+      type,
+    });
+    return res.status(201).json(newTask);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
 // PUT /tasks/:taskId
-export const updateTaskHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const updateTaskHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { taskId } = req.params;
-    const updateTaskUseCase = new UpdateTaskUseCase(taskRepository);
-    const updatedTask = await updateTaskUseCase.execute(taskId, req.body);
-    res.json(updatedTask);
+    const { title, description, type, userEmail } = req.body;
+
+    if (!userEmail) {
+      return res.status(400).json({ message: "userEmail es requerido" });
+    }
+
+    const useCase = new UpdateTaskUseCase(taskRepository);
+    const updatedTask = await useCase.execute(taskId, {
+      title,
+      description,
+      type,
+      userEmail,
+    });
+    return res.json(updatedTask);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
 // DELETE /tasks/:taskId
-export const deleteTaskHandler = async (req: Request, res: Response, next: NextFunction) => {
+export const deleteTaskHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { taskId } = req.params;
-    const deleteTaskUseCase = new DeleteTaskUseCase(taskRepository);
-    await deleteTaskUseCase.execute(taskId);
-    res.sendStatus(204);
+    const userEmail = req.query.userEmail as string;
+    if (!userEmail) {
+      return res.status(400).json({ message: "userEmail es requerido" });
+    }
+
+    const useCase = new DeleteTaskUseCase(taskRepository);
+    await useCase.execute({ taskId, userEmail });
+    return res.sendStatus(204);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };

@@ -17,6 +17,8 @@ export const createUserHandler = async (
     return res.status(201).json({
       id: user.getId(),
       email: user.getEmail(),
+      name: user.getName,
+      lastName: user.getLastName,
       createdAt: user.getCreatedAt(),
     });
   } catch (error) {
@@ -37,6 +39,8 @@ export const getUserHandler = async (
       id: user.getId(),
       email: user.getEmail(),
       createdAt: user.getCreatedAt(),
+      name: user.getName,
+      lastName: user.getLastName,
     });
   } catch (error) {
     return next(error);
